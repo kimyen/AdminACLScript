@@ -1,16 +1,15 @@
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.sagebionetworks.client.SynapseAdminClient;
 import org.sagebionetworks.client.SynapseAdminClientImpl;
 import org.sagebionetworks.client.exceptions.SynapseException;
-import org.sagebionetworks.repo.model.ObjectType;
-import org.sagebionetworks.repo.model.message.ChangeMessage;
-import org.sagebionetworks.repo.model.message.ChangeMessages;
-import org.sagebionetworks.repo.model.message.ChangeType;
+import org.sagebionetworks.repo.model.ACCESS_TYPE;
+import org.sagebionetworks.repo.model.AccessControlList;
+import org.sagebionetworks.repo.model.ResourceAccess;
 
 import com.csvreader.CsvReader;
 
@@ -23,7 +22,10 @@ public class App {
     private final static String STAGING_AUTH = "https://auth-staging.prod.sagebase.org/auth/v1";
     private final static String STAGING_REPO = "https://repo-staging.prod.sagebase.org/repo/v1";
     private final static String STAGING_FILE = "https://file-staging.prod.sagebase.org/file/v1";
-    private static final int BATCH_SIZE = 1000;
+	private static final Set<ACCESS_TYPE> ADMIN_ACCESS_SET = new HashSet<ACCESS_TYPE>(
+			Arrays.asList(ACCESS_TYPE.CHANGE_PERMISSIONS, ACCESS_TYPE.CHANGE_SETTINGS,
+					ACCESS_TYPE.CREATE, ACCESS_TYPE.READ, ACCESS_TYPE.UPDATE, ACCESS_TYPE.DELETE,
+					ACCESS_TYPE.MODERATE));
 
     public static void main(String[] args) {
         if (args.length != 4) printUsage();
@@ -51,34 +53,17 @@ public class App {
 
 	private static void process(SynapseAdminClient adminSynapse, String filePath) throws IOException, SynapseException {
         CsvReader reader = new CsvReader(filePath);
-        List<ChangeMessage> list = new ArrayList<ChangeMessage>();
         while (reader.readRecord()) {
-            ChangeMessage changeMessage = new ChangeMessage();
-            changeMessage.setTimestamp(new Date());
-            changeMessage.setObjectId(reader.get(0));
-            changeMessage.setObjectEtag("etag");
-            changeMessage.setObjectType(ObjectType.PRINCIPAL);
-            changeMessage.setChangeType(ChangeType.UPDATE);
-            list.add(changeMessage);
-
-            if (list.size() == BATCH_SIZE) {
-                createOrUpdateChangeMessages(adminSynapse, list);
-                list = new ArrayList<ChangeMessage>();
-            }
-        }
-        if (!list.isEmpty()) {
-            createOrUpdateChangeMessages(adminSynapse, list);
+            // update the acl
+        	AccessControlList acl = adminSynapse.getACL(reader.get(0));
+        	for (ResourceAccess ra : acl.getResourceAccess()) {
+        		if (ra.getAccessType().contains(ACCESS_TYPE.CHANGE_PERMISSIONS)) {
+        			ra.setAccessType(ADMIN_ACCESS_SET);
+        		}
+        	}
+			adminSynapse.updateACL(acl);
         }
         reader.close();
-    }
-
-    private static void createOrUpdateChangeMessages(
-            SynapseAdminClient adminSynapse, List<ChangeMessage> list)
-            throws SynapseException {
-        ChangeMessages batch = new ChangeMessages();
-        batch.setList(list);
-        adminSynapse.createOrUpdateChangeMessages(batch);
-        System.out.println("Created or updated "+list.size()+" PRINCIPAL change messages.");
     }
 
     private static void printUsage() {

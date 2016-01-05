@@ -55,7 +55,7 @@ public class App {
         CsvReader reader = new CsvReader(filePath);
         while (reader.readRecord()) {
             // update the acl
-        	AccessControlList acl = adminSynapse.getACL(reader.get(0));
+        	AccessControlList acl = adminSynapse.getACL("syn"+reader.get(0));
         	for (ResourceAccess ra : acl.getResourceAccess()) {
         		if (ra.getAccessType().contains(ACCESS_TYPE.CHANGE_PERMISSIONS)) {
         			ra.setAccessType(ADMIN_ACCESS_SET);

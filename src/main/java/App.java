@@ -26,6 +26,9 @@ public class App {
 			Arrays.asList(ACCESS_TYPE.CHANGE_PERMISSIONS, ACCESS_TYPE.CHANGE_SETTINGS,
 					ACCESS_TYPE.CREATE, ACCESS_TYPE.READ, ACCESS_TYPE.UPDATE, ACCESS_TYPE.DELETE,
 					ACCESS_TYPE.MODERATE));
+	private static final Set<ACCESS_TYPE> OUTDATED_ADMIN_ACCESS_SET = new HashSet<ACCESS_TYPE>(
+			Arrays.asList(ACCESS_TYPE.CHANGE_PERMISSIONS, ACCESS_TYPE.CHANGE_SETTINGS,
+					ACCESS_TYPE.CREATE, ACCESS_TYPE.READ, ACCESS_TYPE.UPDATE, ACCESS_TYPE.DELETE));
 
     public static void main(String[] args) {
         if (args.length != 4) printUsage();
@@ -57,7 +60,7 @@ public class App {
             // update the acl
         	AccessControlList acl = adminSynapse.getACL("syn"+reader.get(0));
         	for (ResourceAccess ra : acl.getResourceAccess()) {
-        		if (ra.getAccessType().contains(ACCESS_TYPE.CHANGE_PERMISSIONS)) {
+        		if (ra.getAccessType().equals(OUTDATED_ADMIN_ACCESS_SET)) {
         			ra.setAccessType(ADMIN_ACCESS_SET);
         		}
         	}
